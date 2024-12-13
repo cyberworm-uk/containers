@@ -1,0 +1,16 @@
+# https://gitlab.torproject.org/tpo/core/arti/-/blob/main/crates/arti/src/arti-example-config.toml
+[proxy]
+socks_listen = "0.0.0.0:9050"
+[logging]
+console = "info"
+[storage]
+cache_dir = "/arti/cache"
+state_dir = "/arti/state"
+[address_filter]
+allow_onion_addrs = true
+
+[[bridges.transports]]
+protocols = ["meek_lite","obfs2","obfs3","obfs4","scramblesuit","snowflake","webtunnel"]
+path = "/usr/bin/lyrebird"
+arguments = []
+run_on_startup = false

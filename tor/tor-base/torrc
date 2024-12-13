@@ -1,0 +1,4 @@
+User tor
+DataDirectory /var/lib/tor
+AvoidDiskWrites 1
+ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,snowflake,webtunnel exec /usr/bin/lyrebird
