@@ -4,6 +4,8 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 RUN apk --no-interactive add musl-dev pkgconfig openssl-dev sqlite-dev xz-dev
 RUN cargo install --locked --features=full arti
 
+FROM ghcr.io/cyberworm-uk/lyrebird:latest AS bin
+
 FROM docker.io/library/alpine:latest
 LABEL org.opencontainers.image.base.name="docker.io/library/alpine:latest"
 LABEL org.opencontainers.image.title="Arti (Tor)"
