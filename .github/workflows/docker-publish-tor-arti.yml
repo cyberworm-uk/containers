@@ -1,8 +1,6 @@
 name: Docker Images (Arti)
 
 on:
-  schedule:
-    - cron: '30 00 * * 5'
   workflow_dispatch:
 
 env:
