@@ -1,17 +1,15 @@
 #!/usr/bin/env nix-shell
 #! nix-shell -i bash -p podman buildah coreutils
-#! nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/a59eb7800787c926045d51b70982ae285faa2346.tar.gz
 TIMESTAMP=$(date -I)
 IMAGES=(dnscrypt-proxy doh-proxy arti tor-base tor-client tor-bridge-client tor-bridge-relay snowflake-standalone)
 for IMAGE in ${IMAGES[@]}; do
-	( cd "${IMAGE}";
-		nix-build --arg arch '"arm64"' -o "arm64-${TIMESTAMP}" && podman load -i "arm64-${TIMESTAMP}" ;
-		nix-build --arg arch '"amd64"' -o "amd64-${TIMESTAMP}" && podman load -i  "amd64-${TIMESTAMP}" ;
-		buildah manifest exists ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
-			buildah manifest rm ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" ;
-		buildah manifest create ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
-			buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":amd64 && \
-			buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":arm64 && \
-			buildah manifest push --all ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" docker://ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
-			buildah manifest push --all ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" docker://ghcr.io/cyberworm-uk/"${IMAGE}":latest )
+	nix build .#packages.aarch64-linux."${IMAGE}" --impure --out-link "${IMAGE}-arm64-${TIMESTAMP}"
+	nix build .#packages.x86_64-linux."${IMAGE}" --impure --out-link "${IMAGE}-amd64-${TIMESTAMP}"
+	buildah manifest exists ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
+		buildah manifest rm ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" ;
+	buildah manifest create ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
+		buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":amd64 && \
+		buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":arm64 && \
+		buildah manifest push --all ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" docker://ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
+		buildah manifest push --all ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" docker://ghcr.io/cyberworm-uk/"${IMAGE}":latest
 done
