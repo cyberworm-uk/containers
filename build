@@ -1,12 +1,17 @@
 #!/usr/bin/env nix-shell
 #! nix-shell -i bash -p podman buildah coreutils
+if [ ${#} -gt 0 ]; then
+  REGISTRY_AUTH_FILE=${1}
+fi
 TIMESTAMP=$(date -I)
 IMAGES=(dnscrypt-proxy doh-proxy arti tor-base tor-client tor-bridge-client tor-bridge-relay snowflake-standalone)
 for IMAGE in ${IMAGES[@]}; do
-	nix build .#packages.aarch64-linux."${IMAGE}" --impure --out-link "${IMAGE}-arm64-${TIMESTAMP}"
-	nix build .#packages.x86_64-linux."${IMAGE}" --impure --out-link "${IMAGE}-amd64-${TIMESTAMP}"
-	buildah manifest exists ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
-		buildah manifest rm ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" ;
+	nix build .#packages.aarch64-linux."${IMAGE}" --impure --out-link "${IMAGE}-arm64-${TIMESTAMP}" && \
+    podman load -i "${IMAGE}-arm64-${TIMESTAMP}" && \
+	nix build .#packages.x86_64-linux."${IMAGE}" --impure --out-link "${IMAGE}-amd64-${TIMESTAMP}" && \
+    podman load -i "${IMAGE}-amd64-${TIMESTAMP}" && \
+	(buildah manifest exists ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
+    buildah manifest rm ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" ) || \
 	buildah manifest create ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" && \
 		buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":amd64 && \
 		buildah manifest add ghcr.io/cyberworm-uk/"${IMAGE}":"${TIMESTAMP}" localhost/"${IMAGE}":arm64 && \

@@ -2,17 +2,14 @@
 	description = "cyberworm-uk container builds";
 
 	inputs = {
-		nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-25.05";
+		nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
 		flake-utils.url = "github:numtide/flake-utils";
 	};
 
 	outputs = { self, nixpkgs, flake-utils }:
 		(flake-utils.lib.eachDefaultSystem (system:
 			let
-				pkgs = import nixpkgs {
-					hostPlatform = system;
-					buildPlatform = builtins.currentSystem;
-				};
+        pkgs = import nixpkgs { crossSystem = system; };
 				arch = if nixpkgs.lib.strings.hasPrefix "aarch64" system then "arm64" else "amd64";
 			in {
 				packages = {
