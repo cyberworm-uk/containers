@@ -9,14 +9,14 @@
   outputs = { self, nixpkgs, flake-utils }:
     (flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs { hostPlatform = system; };
+        pkgs = nixpkgs.legacyPackages.${system};
         arch = if nixpkgs.lib.strings.hasPrefix "aarch64" system then "arm64" else "amd64";
       in {
         packages = {
           arti = pkgs.dockerTools.buildLayeredImage {
             name = "arti";
             tag = "${arch}";
-            architecture = "${arch}";
+            #architecture = "${arch}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/arti.toml" ''
@@ -237,6 +237,30 @@
               Entrypoint = [ "${pkgs.doh-proxy-rust}/bin/doh-proxy" ];
             };
           };
+          login = pkgs.writeShellScriptBin "login"
+            ''
+${pkgs.buildah}/bin/buildah login ghcr.io
+            '';
+          build = pkgs.writeShellScriptBin "build"
+            ''
+TIMESTAMP=$(${pkgs.coreutils}/bin/date -I)
+${pkgs.nix}/bin/nix flake update
+${pkgs.git}/bin/git add flake.lock && ${pkgs.git}/bin/git commit -m "$TIMESTAMP"
+for IMAGE in dnscrypt-proxy doh-proxy arti tor-base tor-client tor-bridge-client tor-bridge-relay snowflake-standalone; do
+  ${pkgs.buildah}/bin/buildah manifest exists ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
+    ${pkgs.buildah}/bin/buildah manifest rm ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP"
+
+  ${pkgs.nix}/bin/nix build .#packages.aarch64-linux."$IMAGE" --out-link "result-$IMAGE-arm64-$TIMESTAMP" && \
+    ${pkgs.podman}/bin/podman load -i "result-$IMAGE-arm64-$TIMESTAMP" && \
+  ${pkgs.nix}/bin/nix build .#packages.x86_64-linux."$IMAGE" --out-link "result-$IMAGE-amd64-$TIMESTAMP" && \
+    ${pkgs.podman}/bin/podman load -i "result-$IMAGE-amd64-$TIMESTAMP" && \
+  ${pkgs.buildah}/bin/buildah manifest create ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
+    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":amd64 && \
+    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":arm64 && \
+  ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
+    ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":latest
+done
+            '';
         };
       }
     ));
