@@ -9,14 +9,13 @@
   outputs = { self, nixpkgs, flake-utils }:
     (flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
-        arch = if nixpkgs.lib.strings.hasPrefix "aarch64" system then "arm64" else "amd64";
+        pkgs = nixpkgs.legacyPackages."x86_64-linux";
+        cpkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = {
           arti = pkgs.dockerTools.buildLayeredImage {
             name = "arti";
-            tag = "${arch}";
-            #architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/arti.toml" ''
@@ -31,7 +30,7 @@
                 allow_onion_addrs = true
                 [[bridges.transports]]
                 protocols = ["meek_lite","obfs2","obfs3","obfs4","scramblesuit","webtunnel"]
-                path = "${pkgs.obfs4}/bin/lyrebird"
+                path = "${cpkgs.obfs4}/bin/lyrebird"
                 arguments = []
                 run_on_startup = false
               '')
@@ -41,29 +40,28 @@
               Volumes = {
                 "/arti" = { };
               };
-              Entrypoint = [ "${pkgs.arti}/bin/arti" "-c" "/etc/arti.toml" "proxy" ];
+              Entrypoint = [ "${cpkgs.arti}/bin/arti" "-c" "/etc/arti.toml" "proxy" ];
             };
           };
           tor-base = pkgs.dockerTools.buildLayeredImage {
             name = "tor-base";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/tor/torrc" ''
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
+                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${cpkgs.obfs4}/bin/lyrebird
               '')
+              (pkgs.runCommand "tmp-dir" {} ''mkdir -p $out/var/lib/tor'')
             ];
-            enableFakechroot = true;
             fakeRootCommands = ''
-              mkdir -p /var/lib/tor
-              chown nobody /var/lib/tor
+              mkdir -p var/lib/tor
+              chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" ];
+              Entrypoint = [ "${cpkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -71,24 +69,22 @@
           };
           tor-client = pkgs.dockerTools.buildLayeredImage {
             name = "tor-client";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/tor/torrc" ''
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
+                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${cpkgs.obfs4}/bin/lyrebird
               '')
             ];
-            enableFakechroot = true;
             fakeRootCommands = ''
-              mkdir -p /var/lib/tor
-              chown nobody /var/lib/tor
+              mkdir -p var/lib/tor
+              chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" ];
+              Entrypoint = [ "${cpkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -96,24 +92,22 @@
           };
           tor-bridge-client = pkgs.dockerTools.buildLayeredImage {
             name = "tor-bridge-client";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/tor/torrc" ''
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
+                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${cpkgs.obfs4}/bin/lyrebird
               '')
             ];
-            enableFakechroot = true;
             fakeRootCommands = ''
-              mkdir -p /var/lib/tor
-              chown nobody /var/lib/tor
+              mkdir -p var/lib/tor
+              chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" "--usebridges" "1" ];
+              Entrypoint = [ "${cpkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" "--usebridges" "1" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -121,24 +115,22 @@
           };
           tor-bridge-relay = pkgs.dockerTools.buildLayeredImage {
             name = "tor-bridge-relay";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/tor/torrc" ''
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
+                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${cpkgs.obfs4}/bin/lyrebird
               '')
             ];
-            enableFakechroot = true;
             fakeRootCommands = ''
-              mkdir -p /var/lib/tor
-              chown nobody /var/lib/tor
+              mkdir -p var/lib/tor
+              chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${pkgs.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
+              Entrypoint = [ "${cpkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${cpkgs.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -146,18 +138,16 @@
           };
           snowflake-standalone = pkgs.dockerTools.buildLayeredImage {
             name = "snowflake-standalone";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [ pkgs.fakeNss ];
             config = {
               User = "nobody";
-              Entrypoint = [ "${pkgs.snowflake}/bin/proxy" ];
+              Entrypoint = [ "${cpkgs.snowflake}/bin/proxy" ];
             };
           };
           dnscrypt-proxy = pkgs.dockerTools.buildLayeredImage {
             name = "dnscrypt-proxy";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [
               pkgs.fakeNss
               pkgs.cacert
@@ -224,17 +214,16 @@
             ];
             config = {
               User = "nobody";
-              Entrypoint = [ "${pkgs.dnscrypt-proxy}/bin/dnscrypt-proxy" "-config" "/etc/dnscrypt-proxy/dnscrypt-proxy.toml" ];
+              Entrypoint = [ "${cpkgs.dnscrypt-proxy}/bin/dnscrypt-proxy" "-config" "/etc/dnscrypt-proxy/dnscrypt-proxy.toml" ];
             };
           };
           doh-proxy = pkgs.dockerTools.buildLayeredImage {
             name = "doh-proxy";
-            tag = "${arch}";
-            architecture = "${arch}";
+            tag = "${system}";
             contents = [ pkgs.fakeNss pkgs.cacert ];
             config = {
               User = "nobody";
-              Entrypoint = [ "${pkgs.doh-proxy-rust}/bin/doh-proxy" ];
+              Entrypoint = [ "${cpkgs.doh-proxy-rust}/bin/doh-proxy" ];
             };
           };
           login = pkgs.writeShellScriptBin "login"
@@ -255,8 +244,8 @@ for IMAGE in dnscrypt-proxy doh-proxy arti tor-base tor-client tor-bridge-client
   ${pkgs.nix}/bin/nix build .#packages.x86_64-linux."$IMAGE" --out-link "result-$IMAGE-amd64-$TIMESTAMP" && \
     ${pkgs.podman}/bin/podman load -i "result-$IMAGE-amd64-$TIMESTAMP" && \
   ${pkgs.buildah}/bin/buildah manifest create ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
-    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":amd64 && \
-    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":arm64 && \
+    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":aarch64-linux && \
+    ${pkgs.buildah}/bin/buildah manifest add ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" localhost/"$IMAGE":x86_64-linux && \
   ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
     ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":latest
 done
