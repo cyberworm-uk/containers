@@ -10,7 +10,6 @@
     (flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        arch = if nixpkgs.lib.strings.hasPrefix "aarch64" system then "arm64" else "amd64";
       in {
         packages = {
           arti = pkgs.dockerTools.buildLayeredImage {
