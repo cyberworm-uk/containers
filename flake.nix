@@ -69,7 +69,6 @@
           tor-client = pkgs.dockerTools.buildLayeredImage {
             name = "tor-client";
             tag = "${system}";
-            architecture = "${arch}";
             contents = [
               pkgs.fakeNss
               (pkgs.writeTextDir "/etc/tor/torrc" ''
