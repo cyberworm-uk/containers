@@ -3,7 +3,7 @@
 
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils.url = "https://flakehub.com/f/numtide/flake-utils/*";
   };
 
   outputs = { nixpkgs, flake-utils, ... }:
@@ -251,6 +251,14 @@
               ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" && \
                 ${pkgs.buildah}/bin/buildah manifest push --all ghcr.io/cyberworm-uk/"$IMAGE":"$TIMESTAMP" docker://ghcr.io/cyberworm-uk/"$IMAGE":latest
             done
+            '';
+          commit = pkgs.writeShellScriptBin "commit"
+            ''
+            TAG="$(${pkgs.coreutils}/bin/date +'%Y.%-m.%-d')"
+            ${pkgs.git}/bin/git add * && \
+            ${pkgs.git}/bin/git commit -m $TAG && \
+            ${pkgs.git}/bin/git tag $TAG && \
+            ${pkgs.git}/bin/git push origin tag $TAG
             '';
         };
       }
