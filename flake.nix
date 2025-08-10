@@ -4,6 +4,7 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*";
     flake-utils.url = "https://flakehub.com/f/numtide/flake-utils/*";
+    nix-bin.url = "https://flakehub.com/f/DeterminateSystems/nix-src/*";
   };
 
   outputs = { self, nixpkgs, flake-utils, ... }:
@@ -275,8 +276,8 @@
             ''
             TIMESTAMP=$(${pkgs.coreutils}/bin/date -I)
             for IMAGE in dnscrypt-proxy doh-proxy arti tor-base tor-client tor-bridge-client tor-bridge-relay snowflake-standalone; do
-              ${pkgs.nix}/bin/nix build .#packages.aarch64-linux."$IMAGE" --out-link "result-$IMAGE-arm64-$TIMESTAMP" && \
-              ${pkgs.nix}/bin/nix build .#packages.x86_64-linux."$IMAGE" --out-link "result-$IMAGE-amd64-$TIMESTAMP"
+              nix build .#packages.aarch64-linux."$IMAGE" --out-link "result-$IMAGE-arm64-$TIMESTAMP" && \
+              nix build .#packages.x86_64-linux."$IMAGE" --out-link "result-$IMAGE-amd64-$TIMESTAMP"
             done
             '';
           publish = pkgs.writeShellScriptBin "publish"
