@@ -6,12 +6,45 @@
     flake-utils.url = "https://flakehub.com/f/numtide/flake-utils/*";
   };
 
-  outputs = { nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     (flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = {
+          tor = let torVersion = "0.4.8.17"; in pkgs.stdenv.mkDerivation {
+            pname = "tor";
+            version = "${torVersion}";
+            src = pkgs.fetchzip {
+              url = "https://dist.torproject.org/tor-${torVersion}.tar.gz";
+              hash = "sha256-lmuRj7nDuVbLm/pit8ZR/nYJ4RfW5EaiJAAQI0mh9TI=";
+            };
+            outputs = [ "geoip" "out" ];
+            nativeBuildInputs = [ pkgs.pkg-config ];
+            buildInputs = [
+              pkgs.libevent
+              pkgs.openssl
+              pkgs.zlib
+              pkgs.xz
+              pkgs.zstd
+              pkgs.scrypt
+            ] ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+              pkgs.libseccomp
+              pkgs.libcap
+            ];
+            configureFlags = [
+              "--enable-gpl"
+            ] ++ pkgs.lib.optionals (pkgs.stdenv.hostPlatform != pkgs.stdenv.buildPlatform) [
+              "--disable-tool-name-check"
+            ];
+            NIX_CFLAGS_LINK = pkgs.lib.optionalString pkgs.stdenv.cc.isGNU "-lgcc_s";
+            enableParallelBuilding = true;
+            postInstall = ''
+              mkdir -p $geoip/share/tor
+              mv $out/share/tor/geoip{,6} $geoip/share/tor
+              rm -rf $out/share/tor
+            '';
+          };
           arti = pkgs.dockerTools.buildLayeredImage {
             name = "arti";
             tag = "${system}";
@@ -51,6 +84,8 @@
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
+                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
+                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
                 ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
               '')
               (pkgs.runCommand "tmp-dir" {} ''mkdir -p $out/var/lib/tor'')
@@ -60,7 +95,7 @@
               chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" ];
+              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -75,6 +110,8 @@
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
+                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
+                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
                 ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
               '')
             ];
@@ -83,7 +120,7 @@
               chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" ];
+              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -98,6 +135,8 @@
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
+                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
+                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
                 ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
               '')
             ];
@@ -106,7 +145,7 @@
               chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" "--usebridges" "1" ];
+              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" "--socksport" "0.0.0.0:9050" "--usebridges" "1" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
@@ -121,15 +160,18 @@
                 User nobody
                 DataDirectory /var/lib/tor
                 AvoidDiskWrites 1
+                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
+                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
                 ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
               '')
+              self.packages.${system}.tor.geoip
             ];
             fakeRootCommands = ''
               mkdir -p var/lib/tor
               chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${pkgs.tor}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${pkgs.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
+              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${pkgs.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
