@@ -4,7 +4,6 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/*";
     flake-utils.url = "https://flakehub.com/f/numtide/flake-utils/*";
-    nix-bin.url = "https://flakehub.com/f/DeterminateSystems/nix-src/*";
   };
 
   outputs = { self, nixpkgs, flake-utils, ... }:
@@ -13,6 +12,28 @@
         pkgs = nixpkgs.legacyPackages.${system};
       in {
         packages = {
+          # lyrebird binary package, nixpkgs is outdated
+          obfs4 = pkgs.buildGoModule rec {
+            pname = "obfs4";
+            version = "0.6.1";
+            src = pkgs.fetchFromGitLab {
+              domain = "gitlab.torproject.org";
+              group = "tpo";
+              owner = "anti-censorship/pluggable-transports";
+              # We don't use pname = lyrebird and we use the old obfs4 name as the first
+              # will collide with lyrebird Gtk3 program.
+              repo = "lyrebird";
+              rev = "lyrebird-${version}";
+              hash = "sha256-8oYi6ttMS8b1TZa2Yd0xLnx9Oclg4Yfu+Wjcz73IrPI=";
+            };
+            vendorHash = "sha256-yxvHhrWyqImgwwQe8qf9SbOpuAdYuEKQpyebMaf2n1Q=";
+            ldflags = [
+              "-s"
+              "-w"
+            ];
+            subPackages = [ "cmd/lyrebird" ];
+          };
+          # tor binary package, no systemd deps for significant size reduction
           tor = let torVersion = "0.4.8.17"; in pkgs.stdenv.mkDerivation {
             pname = "tor";
             version = "${torVersion}";
@@ -46,6 +67,17 @@
               rm -rf $out/share/tor
             '';
           };
+          # torrc file, standard config for all tor images
+          torrc = pkgs.writeTextDir "/etc/tor/torrc"
+          ''
+            User nobody
+            DataDirectory /var/lib/tor
+            AvoidDiskWrites 1
+            GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
+            GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
+            ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${self.packages.${system}.obfs4}/bin/lyrebird
+          '';
+          # arti container, rust tor implementation.
           arti = pkgs.dockerTools.buildLayeredImage {
             name = "arti";
             tag = "${system}";
@@ -63,7 +95,7 @@
                 allow_onion_addrs = true
                 [[bridges.transports]]
                 protocols = ["meek_lite","obfs2","obfs3","obfs4","scramblesuit","webtunnel"]
-                path = "${pkgs.obfs4}/bin/lyrebird"
+                path = "${self.packages.${system}.obfs4}/bin/lyrebird"
                 arguments = []
                 run_on_startup = false
               '')
@@ -76,20 +108,13 @@
               Entrypoint = [ "${pkgs.arti}/bin/arti" "-c" "/etc/arti.toml" "proxy" ];
             };
           };
+          # tor-base container, just runs tor.
           tor-base = pkgs.dockerTools.buildLayeredImage {
             name = "tor-base";
             tag = "${system}";
             contents = [
               pkgs.fakeNss
-              (pkgs.writeTextDir "/etc/tor/torrc" ''
-                User nobody
-                DataDirectory /var/lib/tor
-                AvoidDiskWrites 1
-                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
-                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
-              '')
-              (pkgs.runCommand "tmp-dir" {} ''mkdir -p $out/var/lib/tor'')
+              self.packages.${system}.torrc
             ];
             fakeRootCommands = ''
               mkdir -p var/lib/tor
@@ -102,19 +127,13 @@
               };
             };
           };
+          # tor-client container, just runs tor as a client listening on port 9050
           tor-client = pkgs.dockerTools.buildLayeredImage {
             name = "tor-client";
             tag = "${system}";
             contents = [
               pkgs.fakeNss
-              (pkgs.writeTextDir "/etc/tor/torrc" ''
-                User nobody
-                DataDirectory /var/lib/tor
-                AvoidDiskWrites 1
-                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
-                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
-              '')
+              self.packages.${system}.torrc
             ];
             fakeRootCommands = ''
               mkdir -p var/lib/tor
@@ -127,19 +146,13 @@
               };
             };
           };
+          # tor bridge client, just runs tor as a bridge client listening on 9050
           tor-bridge-client = pkgs.dockerTools.buildLayeredImage {
             name = "tor-bridge-client";
             tag = "${system}";
             contents = [
               pkgs.fakeNss
-              (pkgs.writeTextDir "/etc/tor/torrc" ''
-                User nobody
-                DataDirectory /var/lib/tor
-                AvoidDiskWrites 1
-                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
-                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
-              '')
+              self.packages.${system}.torrc
             ];
             fakeRootCommands = ''
               mkdir -p var/lib/tor
@@ -152,27 +165,20 @@
               };
             };
           };
+          # tor bridge relay, runs tor as a bridge relay
           tor-bridge-relay = pkgs.dockerTools.buildLayeredImage {
             name = "tor-bridge-relay";
             tag = "${system}";
             contents = [
               pkgs.fakeNss
-              (pkgs.writeTextDir "/etc/tor/torrc" ''
-                User nobody
-                DataDirectory /var/lib/tor
-                AvoidDiskWrites 1
-                GeoIPFile ${self.packages.${system}.tor.geoip}/tor/geoip
-                GeoIPv6File ${self.packages.${system}.tor.geoip}/tor/geoip6
-                ClientTransportPlugin meek_lite,obfs2,obfs3,obfs4,scramblesuit,webtunnel exec ${pkgs.obfs4}/bin/lyrebird
-              '')
-              self.packages.${system}.tor.geoip
+              self.packages.${system}.torrc
             ];
             fakeRootCommands = ''
               mkdir -p var/lib/tor
               chown nobody var/lib/tor
             '';
             config = {
-              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${pkgs.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
+              Entrypoint = [ "${self.packages.${system}.tor.out}/bin/tor" "-f" "/etc/tor/torrc" "--servertransportplugin" "obfs4 exec ${self.packages.${system}.obfs4}/bin/lyrebird" "--extorport" "auto" "--servertransportlistenaddr" "obfs4 0.0.0.0:443" ];
               Volumes = {
                 "/var/lib/tor" = {};
               };
