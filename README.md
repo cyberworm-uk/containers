@@ -1,3 +1,13 @@
+# Moved
+
+As github continues on it's intractable road to AI enshittification and LLM waste,
+
+I've moved active development and maintenance to [Codeberg](https://codeberg.org/cyberworm-uk/containers).
+
+The `ghcr.io` images will no longer be updated, and can be replaced with `codeberg.org` equivalents.
+
+I've updated this documentation to reflect the new home of the images.
+
 ## Container Image Documentation
 
 - [tor-base](#tor-base) an image which serves as a common base that more complete images are build on.
@@ -24,7 +34,7 @@ podman run \
   --name tor-relay \
   -v tor-datadir:/var/lib/tor \
   -p ${ORPORT}:${ORPORT} \
-  ghcr.io/cyberworm-uk/tor-base:latest \
+  codeberg.org/cyberworm-uk/tor-base:latest \
   --orport ${ORPORT} \
   --nickname myrelay \
   --contactinfo myemail@mydomain.com
@@ -42,7 +52,7 @@ podman run \
   --name torproxy \
   -v tor-datadir:/var/lib/tor \
   -p 127.0.0.1:9050:9050 \
-  ghcr.io/cyberworm-uk/tor-client:latest
+  codeberg.org/cyberworm-uk/tor-client:latest
 # test the tor connection
 (curl -x socks5h://127.0.0.1:9050/ https://check.torproject.org | grep -F Congratulations.) && echo "Success" || echo "Failure"
 ```
@@ -59,7 +69,7 @@ podman run \
   --name obfs4-proxy \
   -p 127.0.0.1:9050:9050 \
   -v tor-datadir:/var/lib/tor \
-  ghcr.io/cyberworm-uk/tor-bridge-client:latest --bridge "obfs4 10.20.30.40:12345 3D7D7A39CCA78C7B0448AFA147EF4CC391564D03 cert=YvJSxrXcnXYZ+C9hsIr18bwsm5u5dtZG9DrLTo8CqY8mZlBjhXcUssJJ185mX+JCc/LSnQ iat-mode=0"
+  codeberg.org/cyberworm-uk/tor-bridge-client:latest --bridge "obfs4 10.20.30.40:12345 3D7D7A39CCA78C7B0448AFA147EF4CC391564D03 cert=YvJSxrXcnXYZ+C9hsIr18bwsm5u5dtZG9DrLTo8CqY8mZlBjhXcUssJJ185mX+JCc/LSnQ iat-mode=0"
 # test the tor connection
 (curl -x socks5h://127.0.0.1:9050/ https://check.torproject.org | grep -F Congratulations.) && echo "Success" || echo "Failure"
 ```
@@ -79,7 +89,7 @@ podman run \
   -p 443:443 \
   -p ${ORPORT}:${ORPORT} \
   -v tor-datadir:/var/lib/tor \
-  ghcr.io/cyberworm-uk/tor-bridge-relay:latest \
+  codeberg.org/cyberworm-uk/tor-bridge-relay:latest \
   --contactinfo myemail@mydomain.com \
   --orport ${ORPORT} \
   --nickname myrelay
@@ -96,7 +106,7 @@ podman run \
   --rm \
   --name snowflake \
   --network host \
-  ghcr.io/cyberworm-uk/snowflake-standalone:latest
+  codeberg.org/cyberworm-uk/snowflake-standalone:latest
 ```
 
 ## arti
@@ -111,7 +121,7 @@ podman run \
   --name arti \
   -v arti-data:/arti \
   -p 127.0.0.1:9050:9050 \
-  ghcr.io/cyberworm-uk/arti:latest
+  codeberg.org/cyberworm-uk/arti:latest
 ```
 
 Additional config snippets can be mounted under `/arti/config/arti/arti.d/`
@@ -125,7 +135,7 @@ podman run \
   --name arti \
   -v arti-data:/arti \
   -p 127.0.0.1:9050:9050 \
-  ghcr.io/cyberworm-uk/arti:latest \
+  codeberg.org/cyberworm-uk/arti:latest \
   -o 'bridges.bridges=["obfs4 1.2.3.4:1234 AA...snip..BB cert=b...snip...g iat-mode=0","obfs4 5.6.7.8:5678 CC...snip...DD cert=T...snip...w iat-mode=0"]'
 ```
 
@@ -144,6 +154,6 @@ podman run \
   --rm \
   --name doh-proxy \
   -p 127.0.0.1:3000:3000 \
-  ghcr.io/cyberworm-uk/doh-proxy:latest \
+  codeberg.org/cyberworm-uk/doh-proxy:latest \
   -l 0.0.0.0:3000
 ```
